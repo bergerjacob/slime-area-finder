@@ -6,7 +6,7 @@ import java.util.*;
 
 public class FindGreatestArea {
 
-    // --- Core Minecraft Logic ---
+    // --- Core Minecraft Logic (Restored to your original version) ---
     private static boolean isSlimeChunk(long seed, int x, int z) {
         Random rnd = new Random(
             seed + (long) (x * x * 0x4c1906) + (long) (x * 0x5ac0db) +
@@ -18,7 +18,9 @@ public class FindGreatestArea {
         int sum = 0;
         for (int j = chunkZ - 7; j <= chunkZ + 7; j++) {
             for (int i = chunkX - circleInteriorXOffset(j - chunkZ); i <= chunkX + circleInteriorXOffset(j - chunkZ); i++) {
-                if (isSlimeChunk(seed, i, j)) sum++;
+                if (isSlimeChunk(seed, i, j)) {
+                    sum++;
+                }
             }
         }
         return sum;
@@ -45,7 +47,7 @@ public class FindGreatestArea {
     }
 
     public static void main(String[] args) {
-        final int MAX_RADIUS = 6250;
+        final int MAX_RADIUS = 3000;
         final int TOP_RESULTS_COUNT = 5;
         Gson gson = new Gson();
         port(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
@@ -72,19 +74,16 @@ public class FindGreatestArea {
                 }
 
                 PriorityQueue<Result> topResults = new PriorityQueue<>(TOP_RESULTS_COUNT);
-
                 os.write("{\"message\":\"Search started...\"}\n".getBytes(StandardCharsets.UTF_8));
                 os.flush();
                 
                 for (int r = data.startRadius; r <= data.endRadius; r++) {
-                    // --- THIS SECTION IS NEW: Stream progress updates ---
                     if (r > data.startRadius && r % 25 == 0) {
                         os.write(gson.toJson(Map.of("progress", Map.of("currentRadius", r, "endRadius", data.endRadius)))
                             .getBytes(StandardCharsets.UTF_8));
                         os.write("\n".getBytes(StandardCharsets.UTF_8));
                         os.flush();
                     }
-                    // --- END NEW SECTION ---
 
                     LambdaCheck chunkChecker = (x, z) -> {
                         int count = numSlimeChunksInRange(data.seed, x, z);
@@ -101,16 +100,21 @@ public class FindGreatestArea {
                             os.flush();
                         }
                     };
-
-                    if (r == 0 && data.startRadius == 0) {
-                        chunkChecker.check(0, 0);
+                    
+                    // --- NEW, SIMPLIFIED, AND CORRECTED SEARCH LOOP ---
+                    if (r == 0) {
+                        if (data.startRadius == 0) chunkChecker.check(0, 0);
                         continue;
                     }
-                    if (r > 0) {
-                        for (int i = -r; i < r; i++) chunkChecker.check(i, r);
-                        for (int i = r; i > -r; i--) chunkChecker.check(r, i);
-                        for (int i = r; i > -r; i--) chunkChecker.check(i, -r);
-                        for (int i = -r; i < r; i++) chunkChecker.check(-r, i);
+                    // Top and bottom edges
+                    for (int x = -r; x <= r; x++) {
+                        chunkChecker.check(x, r);   // Top
+                        chunkChecker.check(x, -r);  // Bottom
+                    }
+                    // Left and right edges (excluding corners, which were already checked)
+                    for (int z = -r + 1; z < r; z++) {
+                        chunkChecker.check(r, z);   // Right
+                        chunkChecker.check(-r, z);  // Left
                     }
                 }
                 os.write("{\"message\":\"Search complete!\"}\n".getBytes(StandardCharsets.UTF_8));
