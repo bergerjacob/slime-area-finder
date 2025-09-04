@@ -1,5 +1,5 @@
-# Stage 1: Build the application using Maven
-FROM eclipse-temurin:17-jdk-jammy as builder
+# Use an image that has BOTH Maven and Java 17
+FROM maven:3.9-eclipse-temurin-17 as builder
 WORKDIR /app
 COPY . .
 RUN mvn clean package -DskipTests
