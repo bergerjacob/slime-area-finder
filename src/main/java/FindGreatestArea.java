@@ -36,7 +36,6 @@ public class FindGreatestArea {
     static class RequestData { long seed; int startRadius; int endRadius; }
     static class Chunk { int x, z; Chunk(int x, int z) { this.x = x; this.z = z; } }
     
-    // This class holds a result and is comparable for sorting
     static class Result implements Comparable<Result> {
         Chunk chunk;
         int slimeCount;
@@ -46,7 +45,7 @@ public class FindGreatestArea {
     }
 
     public static void main(String[] args) {
-        final int MAX_RADIUS = 6250; // Safeguard for Render's free tier
+        final int MAX_RADIUS = 6250;
         final int TOP_RESULTS_COUNT = 5;
         Gson gson = new Gson();
         port(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
@@ -72,28 +71,31 @@ public class FindGreatestArea {
                     throw new IllegalArgumentException("Search radius cannot exceed " + MAX_RADIUS + " chunks.");
                 }
 
-                // PriorityQueue keeps the top N results sorted automatically
                 PriorityQueue<Result> topResults = new PriorityQueue<>(TOP_RESULTS_COUNT);
 
-                // Initial message
                 os.write("{\"message\":\"Search started...\"}\n".getBytes(StandardCharsets.UTF_8));
                 os.flush();
                 
-                // Spiral Search Logic
                 for (int r = data.startRadius; r <= data.endRadius; r++) {
-                    // Define a lambda to check chunks and update the top results list
+                    // --- THIS SECTION IS NEW: Stream progress updates ---
+                    if (r > data.startRadius && r % 25 == 0) {
+                        os.write(gson.toJson(Map.of("progress", Map.of("currentRadius", r, "endRadius", data.endRadius)))
+                            .getBytes(StandardCharsets.UTF_8));
+                        os.write("\n".getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                    }
+                    // --- END NEW SECTION ---
+
                     LambdaCheck chunkChecker = (x, z) -> {
                         int count = numSlimeChunksInRange(data.seed, x, z);
-                        // Check if this result is better than the worst in our top list, or if the list isn't full yet
                         if (topResults.size() < TOP_RESULTS_COUNT || count > topResults.peek().slimeCount) {
                             if (topResults.size() == TOP_RESULTS_COUNT) {
-                                topResults.poll(); // Remove the worst result
+                                topResults.poll();
                             }
                             topResults.add(new Result(new Chunk(x, z), count));
                             
-                            // Stream the new top list to the client
                             List<Result> sortedResults = new ArrayList<>(topResults);
-                            sortedResults.sort(Collections.reverseOrder()); // Sort descending
+                            sortedResults.sort(Collections.reverseOrder());
                             os.write(gson.toJson(Map.of("results", sortedResults)).getBytes(StandardCharsets.UTF_8));
                             os.write("\n".getBytes(StandardCharsets.UTF_8));
                             os.flush();
@@ -123,7 +125,6 @@ public class FindGreatestArea {
         });
     }
 
-    // Functional interface for our lambda
     @FunctionalInterface
     interface LambdaCheck { void check(int x, int z) throws Exception; }
 }
