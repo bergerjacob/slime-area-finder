@@ -63,6 +63,25 @@ public class FindGreatestArea {
         Gson gson = new Gson();
         port(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
 
+        // --- ADD THIS SECTION TO ENABLE CORS ---
+        // This configuration must be placed before you define any routes.
+        before((request, response) -> {
+            // Allows requests from any origin (e.g., your localhost)
+            response.header("Access-Control-Allow-Origin", "*");
+            // Specifies allowed headers your front-end can send
+            response.header("Access-Control-Allow-Headers", "Content-Type");
+            // Specifies allowed HTTP methods
+            response.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        });
+
+        // Handle the browser's "preflight" OPTIONS request
+        options("/*", (request, response) -> {
+            response.status(204); // 204 No Content
+            return "";
+        });
+        // --- END OF CORS SECTION ---
+
+
         get("/", (request, response) -> "Slime Chunk Checker server is alive!");
 
         // --- Endpoint for finding the optimal chunk to stand in ---
