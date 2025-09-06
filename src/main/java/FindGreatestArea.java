@@ -51,7 +51,7 @@ public class FindGreatestArea {
     }
 
     public static void main(String[] args) {
-        final int MAX_RADIUS = 3000;
+        final int MAX_RADIUS = 6250;
         final int TOP_RESULTS_COUNT = 5;
         Gson gson = new Gson();
         port(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
