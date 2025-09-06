@@ -6,15 +6,19 @@ import java.util.*;
 
 public class FindGreatestArea {
 
-    // --- Core Minecraft Logic (Restored to your original version) ---
-    private static boolean isSlimeChunk(long seed, int x, int z) {
+    // --- Core Minecraft Logic (Corrected to match your original file EXACTLY) ---
+    public static boolean isSlimeChunk(long seed, int x, int z) {
         Random rnd = new Random(
-            seed + (long) (x * x * 0x4c1906) + (long) (x * 0x5ac0db) +
-            (long) (z * z) * 0x4307a7L + (long) (z * 0x5f24f) ^ 0x3ad8025fL);
+            seed +
+            (int) (x * x * 0x4c1906) +
+            (int) (x * 0x5ac0db) +
+            (int) (z * z) * 0x4307a7L +
+            (int) (z * 0x5f24f) ^ 0x3ad8025fL
+        );
         return rnd.nextInt(10) == 0;
     }
 
-    private static int numSlimeChunksInRange(long seed, int chunkX, int chunkZ) {
+    public static int numSlimeChunksInRange(long seed, int chunkX, int chunkZ) {
         int sum = 0;
         for (int j = chunkZ - 7; j <= chunkZ + 7; j++) {
             for (int i = chunkX - circleInteriorXOffset(j - chunkZ); i <= chunkX + circleInteriorXOffset(j - chunkZ); i++) {
@@ -26,7 +30,7 @@ public class FindGreatestArea {
         return sum;
     }
 
-    private static int circleInteriorXOffset(int z) {
+    public static int circleInteriorXOffset(int z) {
         switch (Math.abs(z)) {
             case 7: return 0; case 6: return 3; case 5: return 4;
             case 4: return 5; case 3: case 2: case 1: return 6;
@@ -35,7 +39,7 @@ public class FindGreatestArea {
     }
 
     // --- Helper classes for data structure ---
-    static class RequestData { long seed; int startRadius; int endRadius; }
+    static class RequestData { String seed; int startRadius; int endRadius; } // Seed is now a String
     static class Chunk { int x, z; Chunk(int x, int z) { this.x = x; this.z = z; } }
     
     static class Result implements Comparable<Result> {
@@ -68,6 +72,8 @@ public class FindGreatestArea {
             
             try {
                 RequestData data = gson.fromJson(req.body(), RequestData.class);
+                long seed = Long.parseLong(data.seed); // Parse seed safely on the server
+                System.out.println("Starting search for seed " + seed + " from radius " + data.startRadius + " to " + data.endRadius);
 
                 if (data.endRadius > MAX_RADIUS) {
                     throw new IllegalArgumentException("Search radius cannot exceed " + MAX_RADIUS + " chunks.");
@@ -86,7 +92,7 @@ public class FindGreatestArea {
                     }
 
                     LambdaCheck chunkChecker = (x, z) -> {
-                        int count = numSlimeChunksInRange(data.seed, x, z);
+                        int count = numSlimeChunksInRange(seed, x, z);
                         if (topResults.size() < TOP_RESULTS_COUNT || count > topResults.peek().slimeCount) {
                             if (topResults.size() == TOP_RESULTS_COUNT) {
                                 topResults.poll();
@@ -101,27 +107,28 @@ public class FindGreatestArea {
                         }
                     };
                     
-                    // --- NEW, SIMPLIFIED, AND CORRECTED SEARCH LOOP ---
                     if (r == 0) {
                         if (data.startRadius == 0) chunkChecker.check(0, 0);
                         continue;
                     }
-                    // Top and bottom edges
                     for (int x = -r; x <= r; x++) {
-                        chunkChecker.check(x, r);   // Top
-                        chunkChecker.check(x, -r);  // Bottom
+                        chunkChecker.check(x, r);
+                        chunkChecker.check(x, -r);
                     }
-                    // Left and right edges (excluding corners, which were already checked)
                     for (int z = -r + 1; z < r; z++) {
-                        chunkChecker.check(r, z);   // Right
-                        chunkChecker.check(-r, z);  // Left
+                        chunkChecker.check(r, z);
+                        chunkChecker.check(-r, z);
                     }
                 }
-                os.write("{\"message\":\"Search complete!\"}\n".getBytes(StandardCharsets.UTF_8));
+                
+                String finalMessage = "Search complete!";
+                os.write(("{\"message\":\"" + finalMessage + "\"}\n").getBytes(StandardCharsets.UTF_8));
+                System.out.println(finalMessage + " Final best result for seed " + seed + " was: " + gson.toJson(topResults.peek()));
 
             } catch (Exception e) {
                 res.status(400);
                 os.write(gson.toJson(Map.of("error", e.getMessage())).getBytes(StandardCharsets.UTF_8));
+                System.err.println("Error during search: " + e.getMessage());
             } finally {
                 os.close();
             }
