@@ -56,13 +56,22 @@ public class FindGreatestArea {
         Gson gson = new Gson();
         port(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
 
-        // Enable CORS
-        before((req, res) -> {
-            res.header("Access-Control-Allow-Origin", "*");
-            res.header("Access-Control-Allow-Headers", "Content-Type");
-            res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        // Enable CORS by handling the preflight OPTIONS request and adding headers to all responses.
+        options("/*", (request, response) -> {
+            String accessControlRequestHeaders = request.headers("Access-Control-Request-Headers");
+            if (accessControlRequestHeaders != null) {
+                response.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
+            }
+
+            String accessControlRequestMethod = request.headers("Access-Control-Request-Method");
+            if (accessControlRequestMethod != null) {
+                response.header("Access-Control-Allow-Methods", accessControlRequestMethod);
+            }
+
+            return "OK";
         });
-        options("/*", (req, res) -> { res.status(204); return ""; });
+
+        before((request, response) -> response.header("Access-Control-Allow-Origin", "*"));
 
         get("/", (req, res) -> "Slime Chunk Checker server is alive!");
 
